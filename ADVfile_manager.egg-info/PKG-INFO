@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: ADVfile_manager
-Version: 1.0.0
+Version: 1.0.1
 Summary: Unified file abstractions with backups, context manager, and exit cleanup.
 Author: Avi Twil
 License: MIT
@@ -83,6 +83,55 @@ git clone https://github.com/avitwil/ADVfile_manager
 cd ADVfile_manager
 pip install -e .
 ```
+
+---
+
+# 🔎 Comparison: ADVfile\_manager vs Similar Tools
+
+| Feature / Tool             | **ADVfile\_manager**                                           | [pathlib (stdlib)](https://docs.python.org/3/library/pathlib.html) | [os / shutil (stdlib)](https://docs.python.org/3/library/shutil.html) | [pandas](https://pandas.pydata.org/) | [ruamel.yaml](https://pypi.org/project/ruamel.yaml/) / [PyYAML](https://pyyaml.org/) |
+| -------------------------- | -------------------------------------------------------------- | ------------------------------------------------------------------ | --------------------------------------------------------------------- | ------------------------------------ | ------------------------------------------------------------------------------------ |
+| **Supported formats**      | TXT, JSON, CSV, YAML                                           | Works with paths only                                              | Copy/move/delete files                                                | CSV, Excel, JSON, parquet, etc.      | YAML only                                                                            |
+| **Unified API**            | ✅ One interface across all formats                             | ❌                                                                  | ❌                                                                     | ❌                                    | ❌                                                                                    |
+| **Read/Write/Append**      | ✅ Consistent methods (`read`, `write`, `append`)               | Manual file ops                                                    | Manual file ops                                                       | ✅ (DataFrames)                       | ✅ (YAML load/dump)                                                                   |
+| **Cache system**           | ✅ In-memory cache + `clear_cache`                              | ❌                                                                  | ❌                                                                     | Internal DF cache                    | ❌                                                                                    |
+| **Line/Row helpers**       | ✅ `lines()`, `read_line()`, `read_row()`, `rows()`             | ❌                                                                  | ❌                                                                     | ✅ but via DataFrame ops              | ❌                                                                                    |
+| **Backup & restore**       | ✅ `backup()`, `restore()`, `list_backups()`, `clear_backups()` | ❌                                                                  | ❌                                                                     | ❌                                    | ❌                                                                                    |
+| **Backup retention**       | ✅ `max_backups`                                                | ❌                                                                  | ❌                                                                     | ❌                                    | ❌                                                                                    |
+| **Atomic writes**          | ✅ via `.tmp` + `os.replace()`                                  | ❌                                                                  | ❌                                                                     | ❌ (relies on storage FS)             | ❌                                                                                    |
+| **Human-readable size**    | ✅ `get_size_human()`                                           | ❌                                                                  | ❌                                                                     | ❌                                    | ❌                                                                                    |
+| **Context manager safety** | ✅ auto-backup + auto-restore on exception                      | ❌                                                                  | ❌                                                                     | ❌                                    | ❌                                                                                    |
+| **Ephemeral backups**      | ✅ Auto-cleaned with `atexit` (if `keep_backup=False`)          | ❌                                                                  | ❌                                                                     | ❌                                    | ❌                                                                                    |
+| **Exit cleanup controls**  | ✅ `set_exit_cleanup`, `cleanup_backups_for_all`                | ❌                                                                  | ❌                                                                     | ❌                                    | ❌                                                                                    |
+| **Dependencies**           | Optional: `pyyaml`                                             | None                                                               | None                                                                  | Heavy (numpy, etc.)                  | Yes                                                                                  |
+| **Target use case**        | General-purpose file management with safety                    | File system path manipulation                                      | File system operations                                                | Data analysis                        | YAML-specific parsing                                                                |
+
+---
+
+## 📌 Key Takeaways
+
+### What ADVfile\_manager does *better*:
+
+* 🔒 **Safety-first**: atomic writes, automatic backups, and restore-on-error context manager.
+* 🧩 **Unified API**: instead of juggling `open()`, `json`, `csv`, and `yaml`, you get one interface.
+* 🗂 **Backups with retention**: none of the compared tools provide this out-of-the-box.
+* 🧹 **Exit cleanup**: ephemeral backups auto-clean themselves.
+* ⚡ **Lightweight**: works without pandas overhead (which is overkill if you only want CSV/JSON/YAML).
+
+### When to prefer others:
+
+* **pathlib / shutil** → if you only need filesystem manipulation, not file contents.
+* **pandas** → if you need heavy data analysis, joins, filtering, and numeric operations on tabular data.
+* **ruamel.yaml / PyYAML** → if you need advanced YAML features (comments preservation, round-trip editing).
+
+---
+
+## 🎯 Example Use Cases for ADVfile\_manager
+
+* **Config management**: load/modify JSON or YAML configs safely, with rollback if something breaks.
+* **Logs & reports**: append text or CSV logs with automatic backup retention.
+* **Transactional edits**: use `with File(...) as f:` to ensure no data corruption even on crash.
+* **Cross-format tools**: build utilities that handle multiple formats with the same code patterns.
+
 
 ---
 
