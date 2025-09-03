@@ -27,5 +27,5 @@ __all__ = [
     "cleanup_backups_for_all",
 ]
 
-__version__ = "1.0.0"
+__version__ = "1.0.2"
 __author__ = "Avi Twil"

@@ -1,6 +1,10 @@
 
 # ADVfile\_manager
 
+[![PyPI version](https://badge.fury.io/py/ADVfile_manager.svg)](https://pypi.org/project/ADVfile_manager/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Python Version](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/)
+
 **Author:** Avi Twil
 **Repo:** [https://github.com/avitwil/ADVfile\_manager](https://github.com/avitwil/ADVfile_manager)
 
@@ -31,6 +35,7 @@ The base class `File` adds **backups**, **restore**, **retention**, **human-read
 * [Context Manager Safety](#context-manager-safety)
 * [Advanced Notes](#advanced-notes)
 * [Full Examples](#full-examples)
+* [Feature-by-Feature Guide (Usage & Examples)](#feature-by-feature-guide-usage--examples)
 * [License](#license)
 
 ---
@@ -118,7 +123,6 @@ pip install -e .
 * **Logs & reports**: append text or CSV logs with automatic backup retention.
 * **Transactional edits**: use `with File(...) as f:` to ensure no data corruption even on crash.
 * **Cross-format tools**: build utilities that handle multiple formats with the same code patterns.
-
 
 ---
 
@@ -452,6 +456,261 @@ y = YamlFile("config.yaml", "example_data")
 y.write({"app":{"name":"demo"},"features":["a"]})
 y.append({"features":["b"]})
 print(y.get_item("app"))
+```
+
+---
+
+## Feature-by-Feature Guide (Usage & Examples)
+
+Below you’ll find **every feature** with a **Usage explanation** (what & why) and **Examples** (how).
+
+---
+
+### ✔️ Safe Writes (Atomic)
+
+**Usage explanation:**
+Avoids partially-written files if your program crashes mid-write. Data is written to a temp file and then **atomically** replaces the target with `os.replace()`. This pattern is ideal for configs and logs where consistency matters.
+
+**Examples:**
+
+```python
+from ADVfile_manager import TextFile
+
+cfg = TextFile("settings.txt", "data")
+cfg.write("mode=prod")     # safe atomic write
+cfg.write("mode=debug")    # previous state remains intact until replace
+```
+
+---
+
+### 🧠 In-Memory Cache & `clear_cache()`
+
+**Usage explanation:**
+`read()` caches content to save disk I/O on repeated calls. If the file might have been changed by another process or manually edited, call `clear_cache()` before next `read()`.
+
+**Examples:**
+
+```python
+log = TextFile("app.log", "data")
+print(log.read())     # loads + caches
+# ... external edit happens ...
+log.clear_cache()
+print(log.read())     # reloads from disk
+```
+
+---
+
+### 📏 File Size & `get_size_human()`
+
+**Usage explanation:**
+Display storage size in UI/CLI or for sanity checks. `get_size()` returns bytes; `get_size_human()` returns “12.3 KB” style strings.
+
+**Examples:**
+
+```python
+f = TextFile("notes.txt", "data")
+f.write("Hello world")
+print(f.get_size())         # e.g. 11
+print(f.get_size_human())   # e.g. "11.0 B"
+```
+
+---
+
+### 🛟 Backups: `backup`, `list_backups`, `restore`, `clear_backups`
+
+**Usage explanation:**
+Before risky edits, create a backup. If something breaks, restore it. Use `list_backups()` to inspect available snapshots; `clear_backups()` to purge when done.
+
+**Examples:**
+
+```python
+txt = TextFile("daily.txt", "data")
+txt.write("v1"); b1 = txt.backup()
+txt.write("v2"); b2 = txt.backup()
+
+print(txt.list_backups())   # [b1, b2]
+txt.restore(b1)             # restore specific
+print(txt.read())           # "v1"
+
+txt.restore()               # restore latest
+print(txt.read())           # "v2"
+
+print("Removed:", txt.clear_backups())
+```
+
+---
+
+### ♻️ Backup Retention (`max_backups`)
+
+**Usage explanation:**
+Keep only the **last N** backups to control disk usage. Retention is enforced when `backup()` runs.
+
+**Examples:**
+
+```python
+rpt = TextFile("report.txt", "data", max_backups=2)
+for i in range(5):
+    rpt.write(f"v{i}")
+    rpt.backup()
+print(rpt.list_backups())   # only 2 latest
+```
+
+---
+
+### 🧰 Context Manager (Transactional Safety)
+
+**Usage explanation:**
+`with` creates a backup on enter (if `keep_backup=True`). If an exception occurs inside the block, it auto-restores on exit. Cache is always cleared when leaving the context.
+
+**Examples:**
+
+```python
+# Normal usage
+with TextFile("draft.txt", "data") as f:
+    f.write("transactional content")
+
+# Auto-restore on error
+try:
+    with TextFile("draft.txt", "data") as f:
+        f.write("new content")
+        raise RuntimeError("Simulated crash")
+except:
+    pass
+
+print("Restored:", TextFile("draft.txt", "data").read())
+```
+
+---
+
+### 🧹 Ephemeral Backups & Exit Cleanup
+
+**Usage explanation:**
+Temporary operations can request `keep_backup=False`. Such backups are automatically cleaned up at interpreter exit (or manually via `cleanup_backups_for_all`). Control the global behavior with `set_exit_cleanup`.
+
+**Examples:**
+
+```python
+from ADVfile_manager import set_exit_cleanup, cleanup_backups_for_all
+
+with TextFile("tmp.txt", "data")(keep_backup=False) as f:
+    f.write("temp content")
+
+# switch global behavior
+set_exit_cleanup(False)
+set_exit_cleanup(True)
+
+# manual immediate cleanup
+removed = cleanup_backups_for_all()
+print("Removed ephemeral backups:", removed)
+```
+
+---
+
+### 📝 `TextFile`: `lines()` & `read_line()`
+
+**Usage explanation:**
+Stream large files line-by-line without loading everything; randomly access a specific line (1-based).
+
+**Examples:**
+
+```python
+poem = TextFile("poem.txt", "data")
+poem.write("Line 1"); poem.append("Line 2"); poem.append("Line 3")
+
+print(poem.read_line(2))  # "Line 2"
+
+for i, line in poem.lines():
+    print(i, line)
+```
+
+---
+
+### 🧩 `JsonFile`: Dict/List roots, `append`, `get_item`, `items`
+
+**Usage explanation:**
+Handles both dict and list roots. `append()` **extends lists** or **shallow-merges dicts**. `get_item()` accesses by **1-based index** (list) or **key** (dict). `items()` iterates useful pairs.
+
+**Examples:**
+
+```python
+from ADVfile_manager import JsonFile
+
+# Dict root
+conf = JsonFile("conf.json", "data")
+conf.write({"users":[{"id":1}]})
+conf.append({"active": True})       # shallow dict update
+print(conf.get_item("active"))      # True
+for k, v in conf.items():
+    print(k, v)
+
+# List root
+lst = JsonFile("list.json", "data")
+lst.write([{"id":1}])
+lst.append({"id":2})
+lst.append([{"id":3},{"id":4}])
+print(lst.get_item(2))              # {"id":2}
+for i, item in lst.items():
+    print(i, item)
+```
+
+---
+
+### 🧾 `CsvFile`: `write`, `append`, `read_row`, `rows`, column order
+
+**Usage explanation:**
+Treat CSV as **list-of-dicts**. Control header order with `fieldnames`. Append rows safely. `read_row()` retrieves a 1-based row. `rows()` streams rows.
+
+**Examples:**
+
+```python
+from ADVfile_manager import CsvFile
+
+rows = [{"name":"Avi","age":30}, {"name":"Dana","age":25}]
+csvf = CsvFile("table.csv", "data")
+csvf.write(rows, fieldnames=["name","age"])
+csvf.append({"name":"Noa","age":21})
+
+print(csvf.read_row(2))    # {"name":"Dana","age":"25"}
+for i, row in csvf.rows():
+    print(i, row)
+```
+
+---
+
+### 🧱 `YamlFile`: Dict/List roots, `append`, `get_item`, `items`
+
+**Usage explanation:**
+Same semantics as `JsonFile`, powered by PyYAML. Perfect for configs.
+
+**Examples:**
+
+```python
+from ADVfile_manager import YamlFile
+
+yamlf = YamlFile("config.yaml", "data")
+yamlf.write({"app":{"name":"demo"},"features":["a"]})
+yamlf.append({"features":["b"]})     # shallow update
+print(yamlf.get_item("app"))
+for k, v in yamlf.items():
+    print(k, v)
+```
+
+---
+
+### 🧭 Path Handling (str / pathlib.Path)
+
+**Usage explanation:**
+All classes accept either `str` or `pathlib.Path` for `file_path`, so you can integrate easily with modern path code.
+
+**Examples:**
+
+```python
+from pathlib import Path
+from ADVfile_manager import TextFile
+
+p = Path("data")
+txt = TextFile("notes.txt", p)
+txt.write("hello with pathlib")
 ```
 
 ---
