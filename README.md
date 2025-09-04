@@ -24,7 +24,8 @@ The base class `File` adds **backups**, **restore**, **retention helpers**, **hu
 * [Why ADVfile\_manager?](#why-advfile_manager)
 * [Installation](#installation)
 * [Quick Start](#quick-start)
-* [Usage Guide (USAGE.md)](./USAGE.md)
+* [ English Manual](./USAGE.md)
+* [ מדריך בעברית](hebrew_guid.md)
 * [Detailed Usage](#detailed-usage)
 
   * [Common Base: `File`](#common-base-file)
