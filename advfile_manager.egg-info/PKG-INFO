@@ -1,6 +1,6 @@
 Metadata-Version: 2.4
 Name: advfile-manager
-Version: 0.1.0
+Version: 1.3.0
 Summary: Unified file abstractions with safe I/O, backups, caching, and async facade for Text/JSON/CSV/YAML/INI/TOML/XML/Excel.
 Author: Avi Twil
 License: MIT
